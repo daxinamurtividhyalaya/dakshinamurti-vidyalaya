@@ -325,7 +325,7 @@ const SCHOOL_PHONE = "9687607279";
 const SUBJECTS_BY_GROUP = {
   kg: ["ગણિત","ગુજરાતી","English","સામાન્ય જ્ઞાન","ચિત્ર","હસ્તકળા"],
   g1_4: ["ગુજરાતી","હિન્દી","ગણિત","English","આસપાસ","ચિત્ર","કમ્પ્યુટર","સામાન્ય જ્ઞાન"],
-  g5_8: ["સામાન્ય જ્ઞાન","ચિત્ર","ગુજરાતી","English","હિન્દી","સંસ્કૃત","કમ્પ્યુટર","વિજ્ઞાન","ગણિત","P.T.","આસપાસ"],
+  g5_8: ["સામાન્ય જ્ઞાન","ચિત્ર","ગુજરાતી","English","હિન્દી","સંસ્કૃત","કમ્પ્યુટર","વિજ્ઞાન","ગણિત","P.T.","આસપાસ","સમાજ"],
   g9_10: ["ગુજરાતી","English","ગણિત","વિજ્ઞાન","સંસ્કૃત","કમ્પ્યુટર","P.T.","ચિત્ર","સમાજ","હિન્દી"],
   g11_12: ["ગુજરાતી","English","B.A.","S.P.","Eco","Account","Stat"]
 };
@@ -709,14 +709,30 @@ async function loadImage(src){
   });
 }
 async function ensureFonts(){
+  // Load fonts WITH the actual Gujarati text we'll render — without this,
+  // some browsers (notably iOS Safari) only fetch the default Latin subset
+  // and silently fall back to a system font for Gujarati glyphs, which
+  // throws off text measurements and causes overlapping/misaligned output.
+  const sampleText = 'ગૃહકાર્ય આજનું દક્ષિણામૂર્તિ વિદ્યાલય સા વિદ્યા યા વિમુક્તયે ' +
+    '૨૫ વર્ષ નો વિશ્વાસ શિક્ષણ સંસ્કાર શિસ્ત સફળતા તારીખ વાર ધોરણ નોંધ ' +
+    'ગુજરાતી હિન્દી ગણિત વિજ્ઞાન સંસ્કૃત કમ્પ્યુટર સામાન્ય જ્ઞાન ચિત્ર આસપાસ સમાજ હસ્તકળા 0123456789';
   const specs = [
-    '400 30px "Noto Sans Gujarati"','600 30px "Noto Sans Gujarati"','700 30px "Noto Sans Gujarati"',
-    '600 40px "Baloo Bhai 2"','700 40px "Baloo Bhai 2"','800 40px "Baloo Bhai 2"'
+    '400 28px "Noto Sans Gujarati"','500 28px "Noto Sans Gujarati"',
+    '600 28px "Noto Sans Gujarati"','700 28px "Noto Sans Gujarati"',
+    '500 40px "Baloo Bhai 2"','600 40px "Baloo Bhai 2"',
+    '700 40px "Baloo Bhai 2"','800 40px "Baloo Bhai 2"'
   ];
   try{
-    await Promise.all(specs.map(f=>document.fonts.load(f)));
+    await Promise.all(specs.map(f=>document.fonts.load(f, sampleText)));
     await document.fonts.ready;
   }catch(e){}
+  // extra safety net for iOS Safari: poll until fonts truly report as loaded,
+  // since fonts.ready can resolve slightly before glyphs are paint-ready there
+  for(let i=0;i<20;i++){
+    const allReady = specs.every(f=>document.fonts.check(f, sampleText));
+    if(allReady) break;
+    await new Promise(r=>setTimeout(r,80));
+  }
 }
 
 /* ================= Main render ================= */
@@ -1128,7 +1144,7 @@ downloadBtn.addEventListener('click', ()=>{
   if(!lastCanvas) return;
   const data = collectData();
   const stdLabel = standardLabel(data.standard).replace(/\s+/g,'');
-  const filename = `Gruhkarya_${stdLabel}_${formatDate(data.date)}.png`;
+  const filename = `Homework_${stdLabel}_${formatDate(data.date)}.png`;
 
   downloadBtn.disabled = true;
   const originalLabel = downloadBtn.textContent;
